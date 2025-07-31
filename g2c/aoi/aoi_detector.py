@@ -107,7 +107,9 @@ def aoi_detector(image_path, scale_factor=2, debug=False,
     ocr_data = pytesseract.image_to_data(ocr_image, output_type=Output.DICT, config=config)
     
     # get trial_id from the dataframe
-    trial_id = str(image_path.split(".")[0].split("/")[-1]).split()[0]
+    # trial_id = str(image_path.split(".")[0].split("/")[-1]).split()[0] # for UNL_UM24
+    # trial_id = image_path.split("introduction-")[-1].split()[0] # for YMU-UM
+    trial_id = image_path.split("Quiz - ")[-1].split(" (")[0].split(".")[0] # for YMU-UM
 
     # Initialize list to store detected text and bounding boxes
     aoi_list = []

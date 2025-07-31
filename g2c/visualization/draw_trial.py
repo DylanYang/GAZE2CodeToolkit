@@ -23,7 +23,7 @@ def __draw_aoi(draw: ImageDraw.Draw, aoi: pd.DataFrame, bg_color: str) -> None:
         Background color of stimuli image.
     """
 
-    outline = {'white': '#000000', 'black': '#ffffff'}
+    outline = {'white': "#F3EEEE", 'black': '#ffffff'}
 
     for row in aoi[['x', 'y', 'width', 'height']].iterrows():
         y_coordinate = row[1]['y']
@@ -169,7 +169,7 @@ def draw_trial(eye_events: pd.DataFrame = pd.DataFrame(), samples: pd.DataFrame 
                x1_col: str = "x1", y1_col: str = "y1", duration_col: str = "duration",
                eye_event_type_col: str = "eye_event_type",
                sample_x_col: int = "x", sample_y_col: str = "y", 
-               r3:int = 3, r5: int = 5) -> None:
+               r3:int = 3, r5: int = .4) -> None:
     """Draw raw data samples, fixations, and saccades over simuli images image
     Circle size indicates fixation duration.
 

@@ -28,7 +28,8 @@ def aoi_save_tokens_structure(aoi_result_df: pd.DataFrame, file_path: str):
     # Initialize tqdm progress bar
     # add tqdm progress bar
     with tqdm(total=len(aoi_result_df), desc="Saving AOI tokens structure", colour="green") as pbar:
-        aoi_result_df.to_csv(f'./{output_dir}/aoi_{trial_id}_tokens_structure.csv', index=False, header=True)
+        aoi_result_df.to_csv(f'./{output_dir}/aoi_{trial_id}_tokens_structure.csv', index=False, header=True) # for NLU_UM24
+        # aoi_result_df.to_csv(f'./{output_dir}/aoi_Quiz - {trial_id}_tokens_structure.csv', index=False, header=True)        
         pbar.update(len(aoi_result_df))
     
     print(f"Completed! AOI tokens saved to {f'./{output_dir}/aoi_{trial_id}_tokens_structrue.csv'}")
