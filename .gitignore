@@ -1,0 +1,26 @@
+# Large data directories — keep paths configured in datasets_config.py
+# but never check in the data itself.
+datasets/
+output/
+
+# Python build artefacts
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+
+# Editor / OS / Dropbox sidecar metadata
+*:com.dropbox.attrs
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter checkpoint dirs
+.ipynb_checkpoints/
+
+# Local virtualenvs
+.venv/
+venv/
+env/

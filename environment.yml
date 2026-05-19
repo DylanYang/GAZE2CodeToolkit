@@ -1,0 +1,37 @@
+# GAZE2CodeToolkit — Conda environment specification.
+#
+# This file installs the scientific stack via conda-forge (faster, fewer
+# build issues than pip on Windows/macOS) and pins everything else through
+# `pip install -r requirements.txt`.
+#
+# Tesseract OCR binary is included via conda-forge so users do not need a
+# separate system install.
+#
+# Usage:
+#     conda env create -f environment.yml
+#     conda activate gaze2code
+#     # Verify:
+#     python -c "from g2c.parsers import available_datasets; print(available_datasets())"
+
+name: gaze2code
+
+channels:
+  - conda-forge
+
+dependencies:
+  - python=3.10
+  # Scientific core — conda-forge builds work cross-platform out of the box.
+  - numpy>=1.23
+  - pandas>=2.0
+  - scipy>=1.10
+  - matplotlib>=3.7
+  - seaborn>=0.13
+  - opencv>=4.8           # conda-forge `opencv` ≡ pip `opencv-python`
+  - pillow>=10.0
+  - tqdm>=4.66
+  # OCR binary — bundled here so users do not install via apt/brew separately.
+  - tesseract>=5.3
+  - pip
+  - pip:
+      # Everything else flows through pip + requirements.txt.
+      - -r requirements.txt
