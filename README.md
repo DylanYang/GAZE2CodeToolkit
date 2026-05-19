@@ -69,16 +69,84 @@ python -c "from g2c.parsers import available_datasets; print(available_datasets(
 ## System dependencies
 
 Only one item is not pip-installable: the **Tesseract OCR binary**, which
-backs `pytesseract`. The `environment.yml` installs it via conda-forge.
-If you use pip/venv, install it through your OS package manager:
+backs `pytesseract`. If you use **Option A (conda)** above, this is
+already handled — `environment.yml` pulls Tesseract from conda-forge and
+you can skip the rest of this section.
+
+If you use **Option B (pip/venv)**, install Tesseract through your OS
+package manager:
 
 | OS | Command |
 |---|---|
-| macOS (Homebrew) | `brew install tesseract` |
 | Ubuntu / Debian | `sudo apt-get install tesseract-ocr` |
-| Windows | <https://github.com/UB-Mannheim/tesseract/wiki> |
+| macOS (Homebrew) | `brew install tesseract` |
+| Windows 11 | UB-Mannheim installer — <https://github.com/UB-Mannheim/tesseract/wiki> |
 
-Confirm with `tesseract --version`.
+Verify the install:
+
+```bash
+tesseract --version
+```
+
+### Windows 11 notes
+
+1. Download `tesseract-ocr-w64-setup-5.x.x.exe` from the
+   [UB-Mannheim builds](https://github.com/UB-Mannheim/tesseract/wiki)
+   and run it. Keep the default install path
+   (`C:\Program Files\Tesseract-OCR\`) and make sure the **English**
+   language pack is selected.
+2. Add `C:\Program Files\Tesseract-OCR` to your system `PATH`
+   (`Win+R` → `sysdm.cpl` → Advanced → Environment Variables → Path →
+   New), then open a new terminal and confirm with `tesseract --version`.
+3. If you would rather not edit `PATH`, point `pytesseract` at the
+   binary explicitly inside your code:
+
+   ```python
+   import pytesseract
+   pytesseract.pytesseract.tesseract_cmd = (
+       r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+   )
+   ```
+
+### macOS notes
+
+Homebrew puts `tesseract` on `PATH` automatically — `pytesseract` will
+find it with no further configuration. If `brew` itself is not
+installed:
+
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```
+
+On Apple Silicon the binary lives at `/opt/homebrew/bin/tesseract`; on
+Intel Macs at `/usr/local/bin/tesseract`. Either way `which tesseract`
+should return a path after `brew install tesseract`.
+
+### Linux notes
+
+On Debian / Ubuntu the `tesseract-ocr` package installs both the binary
+and the default English language data:
+
+```bash
+sudo apt-get update
+sudo apt-get install tesseract-ocr
+# Optional: extra language packs, e.g. simplified Chinese
+sudo apt-get install tesseract-ocr-chi-sim
+```
+
+Other distros:
+
+| Distro | Command |
+|---|---|
+| Fedora / RHEL | `sudo dnf install tesseract` |
+| Arch / Manjaro | `sudo pacman -S tesseract tesseract-data-eng` |
+| openSUSE | `sudo zypper install tesseract-ocr` |
+
+The package manager places the binary at `/usr/bin/tesseract`, already on
+`PATH`. WSL2 users follow the same Debian/Ubuntu instructions — the
+binary is shared with your Linux side, not your Windows side, so
+Tesseract has to be installed in both environments if you want to use
+both.
 
 ## Repository layout
 
@@ -294,3 +362,11 @@ the top-level repository `README` for the full reference.
 ## License
 
 See `COPYING.txt` and `LICENSE` at the repository root.
+
+## 📬 Contact
+
+For questions, collaboration, or reuse inquiries:
+
+* **Wudao Yang**
+  Universiti Malaya / Yunnan Minzu University
+  📧 [s2137045@siswa.um.edu.my](mailto:s2137045@siswa.um.edu.my)
