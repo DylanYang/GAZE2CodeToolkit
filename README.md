@@ -1,5 +1,13 @@
 # GAZE2CodeToolkit
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
+[![Streamlit](https://img.shields.io/badge/built%20with-Streamlit-FF4B4B.svg)](https://streamlit.io)
+[![Tesseract OCR](https://img.shields.io/badge/OCR-Tesseract-005F73.svg)](https://github.com/tesseract-ocr/tesseract)
+[![Code style: PEP 8](https://img.shields.io/badge/code%20style-PEP%208-orange.svg)](https://peps.python.org/pep-0008/)
+[![Last commit](https://img.shields.io/github/last-commit/DylanYang/GAZE2CodeToolkit)](https://github.com/DylanYang/GAZE2CodeToolkit/commits/main)
+[![Repo stars](https://img.shields.io/github/stars/DylanYang/GAZE2CodeToolkit?style=social)](https://github.com/DylanYang/GAZE2CodeToolkit/stargazers)
+
 End-to-end pipeline for turning raw eye-tracking recordings of programmers
 reading source code into **fixation × code-token AOI** tables. Outputs feed
 the ECPG (Stage II) and EC-GazeFormer (Stage III) modeling lines of the
