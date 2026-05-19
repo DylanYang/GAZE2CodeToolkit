@@ -19,9 +19,10 @@ cd GAZE2CodeToolkit
 python -m cli.<name> --help
 ```
 
-The CLIs depend only on the existing `g2c` package — no new Python
-deps. `evaluate_ocr.py` optionally uses `scikit-learn` for the ROC
-curve; pass `--skip-roc` to bypass.
+The CLIs depend only on the existing `g2c` package. `evaluate_ocr.py`
+optionally uses `scikit-learn` for the ROC curve (pass `--skip-roc` to
+bypass). `classify_expertise.py` requires `scikit-learn` and
+`xgboost` — both pinned in `environment.yml` / `requirements.txt`.
 
 ## Parser unification
 
@@ -40,7 +41,7 @@ do not need to change.
 Adding a third Tobii dataset (same hardware export format) is a config
 entry in `datasets_config.DATASETS`, no code edit required.
 
-## The five CLIs
+## The six CLIs
 
 ### 1. `extract_fixations.py`
 
@@ -133,6 +134,52 @@ Both `gt` and `detected` CSVs must contain columns:
 `line_num, x, y, width, height, text`. `detected` may additionally
 contain `confidence`.
 
+### 6. `classify_expertise.py`
+
+Stage II — turns the fixation × token AOI table into participant-level
+expertise predictions. Two subcommands.
+
+**6a. `build-features`** — roll up labelled, per-question
+fixation × token CSVs (`Q1.csv … Q5.csv`, each containing
+`p_id, expertise, duration, aoi_token`) into 8-D token feature CSVs:
+
+```bash
+python -m cli.classify_expertise build-features \
+    --raw-dir  output/unl_um/group/aoi/labelled \
+    --out-dir  output/unl_um/classification
+# -> participant_features_Q1_token.csv, ..., participant_features_Q5_token.csv
+```
+
+The required input columns are produced by `cli.extract_aoi` (which
+emits `aoi_token`, `duration`, …); you supply `p_id` and `expertise`
+by joining the output of `cli.score_expertise` onto the AOI table.
+
+**6b. `train`** — multi-seed, participant-level Stratified-K-Fold CV
+with the PCGC prototype scorer plus a downstream classifier
+(`lr | linsvm | xgb`). Single-task mode operates on one per-question
+CSV; multi-task mode aggregates across questions with several
+weighting schemes (`uniform`, `w1`, `w2_<a>`, `oof_relu`,
+`oof_soft_<a>`).
+
+```bash
+# Single-task (representation A, XGBoost, 9 seeds)
+python -m cli.classify_expertise train \
+    --input output/unl_um/classification/participant_features_Q1_token.csv \
+    --representation A --model xgb \
+    --output-dir output/unl_um/classification/results
+
+# Weighted multi-task across all 7 questions
+python -m cli.classify_expertise train \
+    --multitask-dir output/unl_um/classification \
+    --multitask-suffix token \
+    --feature-type repr_A --weighting w1 --model xgb \
+    --output-dir output/unl_um/classification/results
+```
+
+Outputs are two CSVs per run: per-seed results and a summary
+(mean ± std across seeds). Strict participant-level CV — prototypes
+and scalers are fit on the training fold only.
+
 ## Migration checklist (per script)
 
 If you previously ran the notebook by editing cells in place, the
@@ -145,3 +192,4 @@ equivalent CLI invocations are:
 | `g2c_visionizer.ipynb`         | `python -m cli.visualize`         |
 | `g2c_expertise.ipynb`          | `python -m cli.score_expertise`   |
 | `evaluate_ocr.ipynb`           | `python -m cli.evaluate_ocr`      |
+| *(none — ECPG `run_experiment.py`)* | `python -m cli.classify_expertise` |

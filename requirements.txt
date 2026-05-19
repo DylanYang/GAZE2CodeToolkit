@@ -24,7 +24,10 @@ tqdm>=4.66
 # --- OCR evaluation (cli/evaluate_ocr.py) ---
 rapidfuzz>=3.5
 python-Levenshtein>=0.23
-scikit-learn>=1.3          # Only for the ROC curve; pass --skip-roc to avoid
+scikit-learn>=1.3          # ROC curve in cli/evaluate_ocr.py and CV/scaling in g2c/classification/
+
+# --- Expertise classification (cli/classify_expertise.py, g2c/classification/) ---
+xgboost>=2.0               # Locked baseline classifier; pin if reproducing thesis numbers
 
 # --- Web UI (app.py / webapp/) ---
 streamlit>=1.30            # Headless browser UI; optional if you only use the CLIs

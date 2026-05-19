@@ -9,9 +9,10 @@
 [![Repo stars](https://img.shields.io/github/stars/DylanYang/GAZE2CodeToolkit?style=social)](https://github.com/DylanYang/GAZE2CodeToolkit/stargazers)
 
 End-to-end pipeline for turning raw eye-tracking recordings of programmers
-reading source code into **fixation × code-token AOI** tables. Outputs feed
-the ECPG (Stage II) and EC-GazeFormer (Stage III) modeling lines of the
-parent PhD thesis.
+reading source code into **fixation × code-token AOI** tables, and from
+there into **participant-level expertise predictions** via an
+interpretable prototype-based classifier (PCGC). The transformer line
+(EC-GazeFormer, Stage III) remains separate.
 
 ```
                     ┌──────────────────────────────────────────────┐
@@ -29,8 +30,16 @@ parent PhD thesis.
                     │                       (aoi.hit_test)         │
                     └────────────────┬─────────────────────────────┘
                                      │
+                    ┌────────────────▼─────────────────────────────┐
+                    │ Token features  →   PCGC + hybrid classifier │
+                    │                       (g2c.classification)   │
+                    └────────────────┬─────────────────────────────┘
+                                     │
                                      ▼
-                             ECPG  /  EC-GazeFormer
+                          Expertise prediction (AUC / macro-F1)
+                                     │
+                                     ▼
+                                EC-GazeFormer (separate repo)
 ```
 
 ## Quick start
@@ -164,6 +173,7 @@ GAZE2CodeToolkit/
 │   │   └── ...
 │   ├── fixation_classification/   # I-DT classifier
 │   ├── aoi/                       # OCR AOI detection, hit-test
+│   ├── classification/            # PCGC prototype classifier + hybrid CV
 │   ├── util/                      # Helpers (lines, stimuli, exports)
 │   └── visualization/             # Trial overlay, heatmap, timeline
 ├── cli/                     # Command-line entry points (see cli/README.md)
@@ -171,7 +181,8 @@ GAZE2CodeToolkit/
 │   ├── extract_aoi.py
 │   ├── visualize.py
 │   ├── score_expertise.py
-│   └── evaluate_ocr.py
+│   ├── evaluate_ocr.py
+│   └── classify_expertise.py
 ├── app.py                   # Streamlit web UI entry point
 ├── webapp/                  # Streamlit tab modules and shared helpers
 │   ├── components.py
@@ -182,7 +193,7 @@ GAZE2CodeToolkit/
 └── *.ipynb                  # Legacy Jupyter notebooks (kept as research record)
 ```
 
-## The three things this toolkit does
+## The four things this toolkit does
 
 ### 1. Parse raw Tobii TSV → canonical fixation rows
 
@@ -232,6 +243,41 @@ visualization.draw_trial(eye_events, samples, draw_fixation=True, r3=3, r5=1)
 visualization.draw_heatmap(eye_events, contours=False, sigma_value=17,
                            vmin=0, vmax=100)
 ```
+
+### 4. Classify expertise (PCGC / hybrid)
+
+The fixation × token table is then rolled up into 8 vocabulary-agnostic
+**token features** per participant (Shannon entropy, Gini, top-3 %,
+revisit rate …) and fed into a Mahalanobis **PCGC** prototype scorer.
+A downstream classifier (`lr | linsvm | xgb`) plus participant-level
+StratifiedKFold CV produces honest AUC / macro-F1 estimates:
+
+```python
+from g2c.classification import (
+    extract_token_features_from_csv, load_participant_feature_csv,
+    run_multi_seed_experiment, summarize_results,
+)
+
+# 1) Per-question token features  (output of cli.extract_aoi + expertise label)
+feat_df = extract_token_features_from_csv("output/unl_um/aoi_labelled/Q1.csv")
+
+# 2) Participant-level CV
+df, feat_cols = load_participant_feature_csv("participant_features_Q1_token.csv")
+results = run_multi_seed_experiment(
+    df=df, feature_cols=feat_cols,
+    representation="A", model_name="xgb", agg="mean",
+    seeds=[42, 43, 44, 45, 46, 47, 48, 49, 50], n_splits=5,
+)
+print(summarize_results(results))
+```
+
+Six hybrid representations (`A`, `A_v2`, `A_v3`, `B`, `C`, `D`) and two
+multi-task aggregation modes (training-AUC weighted and OOF-AUC
+weighted) are exposed via `cli/classify_expertise.py`. The locked
+XGBoost baseline is the reference comparison point; do not change the
+`StandardScaler.fit_transform` ordering inside
+`g2c.classification.evaluation` without re-running the locked baseline,
+or the no-leakage guarantee will silently break.
 
 ## Web UI (Streamlit)
 
@@ -287,6 +333,18 @@ python -m cli.evaluate_ocr \
     --ground-truth output/ocr_groundtruth/Q5_ground_truth04.csv \
     --detected output/orc_detection/Q5_detected_tokens.csv \
     --out-dir output/ocr_eval/Q5
+
+# 6a) Build participant-level token features from labelled fixation×token CSVs
+python -m cli.classify_expertise build-features \
+    --raw-dir  output/unl_um/aoi/labelled \
+    --out-dir  output/unl_um/classification
+
+# 6b) Train + evaluate (multi-task, weighted by training-fold AUC)
+python -m cli.classify_expertise train \
+    --multitask-dir output/unl_um/classification \
+    --multitask-suffix token \
+    --feature-type repr_A --weighting w1 --model xgb \
+    --output-dir output/unl_um/classification/results
 ```
 
 See `cli/README.md` for the full list of CLI flags and additional

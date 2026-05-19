@@ -29,6 +29,9 @@ dependencies:
   - opencv>=4.8           # conda-forge `opencv` ≡ pip `opencv-python`
   - pillow>=10.0
   - tqdm>=4.66
+  # Expertise-classification stack (used by g2c/classification and cli/classify_expertise).
+  - scikit-learn>=1.3
+  - xgboost>=2.0
   # OCR binary — bundled here so users do not install via apt/brew separately.
   - tesseract>=5.3
   - pip
