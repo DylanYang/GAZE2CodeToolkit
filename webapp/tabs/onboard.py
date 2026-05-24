@@ -230,16 +230,24 @@ def _step1_split_tsv(*, name: str, raw_dir: Path) -> None:
                 tsv_path = Path.cwd() / tsv_path
     else:
         st.caption(
-            "Browser uploads are practical up to ~500 MB. For multi-GB "
-            "files use the server-path option above."
+            "Server-side upload cap is set to **50 GB** by "
+            "`.streamlit/config.toml`. Two progress phases:\n\n"
+            "1. **Browser → server** — shown by Streamlit's own bar "
+            "inside the upload widget below (the widget cancels its own "
+            "byte transfer if you remove the file before it's done).\n"
+            "2. **Server → disk** — shown as a bar that appears here "
+            "*after* phase 1, spooling the in-memory upload to "
+            "`/tmp/` in 64 MB chunks.\n\n"
+            "Browser tabs typically OOM around 2–4 GB before phase 1 "
+            "finishes, so for >2 GB files the **Server path** option "
+            "above is still the safer route."
         )
         up = st.file_uploader("Upload .tsv", type=["tsv"], key="ob_tsv_upload")
+        spool_slot = st.empty()    # reserved spot, populated as soon as upload completes
         if up is not None:
             tmp = Path(f"/tmp/_ob_upload_{name}.tsv")
-            with open(tmp, "wb") as f:
-                f.write(up.getbuffer())
-            tsv_path = tmp
-            st.caption(f"Buffered upload → `{tmp}` ({tmp.stat().st_size / 1e6:.1f} MB)")
+            with spool_slot.container():
+                tsv_path = _buffer_upload_to_disk(up, tmp)
 
     pid_col = st.text_input(
         "Participant column name",
@@ -319,6 +327,62 @@ def _step1_split_tsv(*, name: str, raw_dir: Path) -> None:
 
 class _SplitError(Exception):
     """Raised when the merged TSV cannot be parsed."""
+
+
+# ---------------------------------------------------------------------------
+# Upload helper
+# ---------------------------------------------------------------------------
+
+# 64 MB matches typical SSD-friendly sequential write block sizes and keeps
+# the progress-bar update rate around once every few hundred ms even for
+# multi-GB files.
+_UPLOAD_CHUNK_BYTES = 64 * 1024 * 1024
+
+
+def _buffer_upload_to_disk(uploaded_file, target: Path) -> Path:
+    """Stream a Streamlit ``UploadedFile`` to disk in 64 MB chunks while
+    showing a progress bar. Streamlit's own progress UI covers the
+    browser → server transfer; this bar covers the subsequent server-side
+    spool to a real path on disk, which can take noticeable time for
+    multi-GB files because ``uploaded_file.getbuffer()`` would otherwise
+    materialise the entire payload in one shot with no UI feedback.
+    """
+    total = getattr(uploaded_file, "size", None) or 0
+    bar = st.progress(
+        0.0,
+        text=(
+            f"Spooling upload to `{target}` "
+            f"({total / 1e9:.2f} GB) …" if total else
+            f"Spooling upload to `{target}` …"
+        ),
+    )
+    target.parent.mkdir(parents=True, exist_ok=True)
+    written = 0
+    try:
+        uploaded_file.seek(0)
+    except Exception:
+        pass
+    with open(target, "wb") as fout:
+        while True:
+            chunk = uploaded_file.read(_UPLOAD_CHUNK_BYTES)
+            if not chunk:
+                break
+            fout.write(chunk)
+            written += len(chunk)
+            if total:
+                bar.progress(
+                    min(written / total, 1.0),
+                    text=(f"Spooling … {written / 1e9:.2f} / "
+                          f"{total / 1e9:.2f} GB"),
+                )
+            else:
+                # Unknown total — keep the bar at indeterminate.
+                bar.progress(
+                    0.0,
+                    text=f"Spooling … {written / 1e9:.2f} GB written",
+                )
+    bar.progress(1.0, text=f"Spooled {written / 1e9:.2f} GB → `{target}`")
+    return target
 
 
 # ---------------------------------------------------------------------------

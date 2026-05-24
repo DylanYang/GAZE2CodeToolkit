@@ -95,24 +95,22 @@ DATASETS["UNL002"] = {
     "raw_dir": "datasets/UNL002/rawdata",
     "stimuli_dir": "datasets/UNL002/stimuli",
     "stimuli_names": (
-        "Q1 (localhost)",
-        "Q2A (localhost)",
-        "Q2B (localhost)",
-        "Q3 (localhost)",
-        "Q4A (localhost)",
-        "Q4B (localhost)",
-        "Q5 (localhost)",
+        'Q1 (localhost)',
+        'Q2A (localhost)',
+        'Q2B (localhost)',
+        'Q3 (localhost)',
+        'Q4A (localhost)',
+        'Q4B (localhost)',
+        'Q5 (localhost)',
     ),
     "n_stimuli": 7,
-    # Newer Tobii Pro Lab exports rename "Gaze event duration" → "Eye
-    # movement event duration". Override just that one mapping.
-    "columns": {**TOBII_PRO_COLUMNS, "duration": "Eye movement event duration"},
+    "columns": {**TOBII_PRO_COLUMNS, 'duration': 'Eye movement event duration'},
     "participant_col": "Participant name",
     "trial_split": {"strategy": "paired_markers", "per_trial": 3},
     "stimuli_name_template": "{event_value}.png",
     "trial_id_strategy": "first_word",
     "fixation_label": "Fixation",
-    "drop_cols_from": 99,             # Drops Ungrouped + AOI hit cols + post-AOI metadata.
+    "drop_cols_from": 99,             # TODO verify — AOI block boundary
     "samples_drop_cols": TOBII_PRO_SAMPLES_DROP_COLS,
     "default_sample_size": 48,
 }

@@ -1,0 +1,16 @@
+# Streamlit per-project config for GAZE2CodeToolkit.
+#
+# Picked up automatically when `streamlit run app.py` is launched from this
+# directory. The CLI / env-var equivalents take precedence if set.
+
+[server]
+# Lift the browser-upload size cap. The Onboard Tobii tab's Step 1 takes
+# a single merged Tobii Pro Lab TSV, which is routinely 5–25 GB. The
+# Streamlit default (200 MB) blocks those even when the browser would
+# happily stream them. 51200 MB = 50 GB is effectively unlimited for
+# this use case; the real upper bound is the user's browser memory.
+#
+# For files in the multi-GB range we still recommend the "Server path"
+# option in Step 1 (text input) instead of the upload widget — it just
+# reads from disk and never touches the HTTP path.
+maxUploadSize = 51200
