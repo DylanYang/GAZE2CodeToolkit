@@ -86,10 +86,16 @@ def load_dataset_with_bar(
     return result
 
 
-@st.cache_data(show_spinner=False)
 def trial_ids_for_dataset(dataset_name: str) -> list[str]:
     """Trial identifiers come straight from the dataset config; no need to
     actually parse any TSVs to enumerate them.
+
+    Intentionally *not* cached with ``@st.cache_data``: the Onboard tab
+    edits ``datasets_config.py`` at runtime, and a stale cache here would
+    keep showing the previous ``stimuli_names`` (e.g. the original
+    uploaded PNG stems) in the trial-picker dropdown long after the
+    config was rewritten with the marker-aligned names. Re-reading the
+    config on every call is microseconds — cheap enough to do every time.
     """
     from g2c.parsers.datasets_config import DATASETS
 

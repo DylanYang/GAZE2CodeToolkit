@@ -8,6 +8,60 @@ from g2c.util import _find_background_color, _get_meta_data, _get_stimuli
 from g2c.aoi import find_aoi
 
 
+# Column names of interest in the raw Tobii samples dataframe. They are
+# the same across UNL_UM / YMU_UM / UNL002 because the parser preserves
+# the original Tobii Pro Lab headers in `samples`. If a future export
+# variant renames these, this helper degrades gracefully (returns an
+# empty saccade table) so `draw_saccade=True` simply draws nothing.
+_SACCADE_EVENT_LABEL = "Saccade"
+_SAMPLES_EVENT_TYPE_COL = "Eye movement type"
+_SAMPLES_EVENT_INDEX_COL = "Eye movement type index"
+_SAMPLES_GAZE_X_COL = "Gaze point X"
+_SAMPLES_GAZE_Y_COL = "Gaze point Y"
+
+
+def _saccade_segments_from_samples(samples: pd.DataFrame) -> pd.DataFrame:
+    """Derive (start, end)-coordinate saccade segments from the raw samples
+    table.
+
+    Tobii Pro Lab labels every gaze sample with one of
+    ``Fixation / Saccade / EyesNotFound / Unclassified`` in the
+    ``Eye movement type`` column, and assigns a monotonically increasing
+    integer in ``Eye movement type index`` each time the type changes.
+    A "saccade" as drawn on the trial overlay is one contiguous run of
+    Saccade-tagged samples — i.e. one unique ``Eye movement type index``
+    value among the saccade rows.
+
+    For each such run, the start point uses the first row's
+    ``Gaze point X / Y`` and the end point uses the last row's. ``Gaze
+    point X/Y`` (raw gaze) is preferred over ``Fixation point X/Y``
+    because the latter is only populated during fixations.
+    """
+    if samples is None or samples.empty:
+        return pd.DataFrame(columns=["x0", "y0", "x1", "y1"])
+
+    required = (_SAMPLES_EVENT_TYPE_COL, _SAMPLES_EVENT_INDEX_COL,
+                _SAMPLES_GAZE_X_COL, _SAMPLES_GAZE_Y_COL)
+    if not all(c in samples.columns for c in required):
+        return pd.DataFrame(columns=["x0", "y0", "x1", "y1"])
+
+    sac = samples.loc[
+        samples[_SAMPLES_EVENT_TYPE_COL] == _SACCADE_EVENT_LABEL,
+        [_SAMPLES_EVENT_INDEX_COL, _SAMPLES_GAZE_X_COL, _SAMPLES_GAZE_Y_COL],
+    ].dropna(subset=[_SAMPLES_GAZE_X_COL, _SAMPLES_GAZE_Y_COL])
+    if sac.empty:
+        return pd.DataFrame(columns=["x0", "y0", "x1", "y1"])
+
+    starts = sac.groupby(_SAMPLES_EVENT_INDEX_COL, sort=True).first()
+    ends = sac.groupby(_SAMPLES_EVENT_INDEX_COL, sort=True).last()
+    return pd.DataFrame({
+        "x0": starts[_SAMPLES_GAZE_X_COL].to_numpy(),
+        "y0": starts[_SAMPLES_GAZE_Y_COL].to_numpy(),
+        "x1": ends[_SAMPLES_GAZE_X_COL].to_numpy(),
+        "y1": ends[_SAMPLES_GAZE_Y_COL].to_numpy(),
+    })
+
+
 # Candidate TrueType fonts to try when annotating fixations. Order matters:
 # we prefer Arial/Helvetica on systems where it is installed, then fall back
 # to DejaVu Sans (default on Linux / matplotlib), then Liberation Sans, then
@@ -256,9 +310,15 @@ def draw_trial(eye_events: pd.DataFrame = pd.DataFrame(), samples: pd.DataFrame 
                         x0_col, y0_col, duration_col, r3=r3, r5=r5)
 
     if draw_saccade:
-        saccades = eye_events.loc[eye_events[eye_event_type_col] == "saccade"]
+        # `eye_events` is fixation-only by design (the Tobii parser filters
+        # to `fixation_label` rows). Saccades live in the raw `samples`
+        # dataframe as contiguous runs of `Eye movement type == "Saccade"`
+        # tagged with a shared `Eye movement type index`. Build segments
+        # from those runs on demand here so the downstream drawer sees the
+        # standard x0/y0/x1/y1 schema.
+        saccades = _saccade_segments_from_samples(samples)
         __draw_saccade(draw, saccades, draw_number,
-                       x0_col, y0_col, x1_col, y1_col)
+                       "x0", "y0", "x1", "y1")
 
     plt.figure(figsize=(12,6))
     plt.title('Eye Fixation Over Stimuli Image', fontsize=25)  # Adjust fontsize as needed

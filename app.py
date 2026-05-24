@@ -22,7 +22,7 @@ st.set_page_config(
 
 # Tabs are imported AFTER set_page_config so any st.* call they trigger
 # at import time happens inside the configured app.
-from webapp.tabs import aoi, evaluate, extract, visualize  # noqa: E402
+from webapp.tabs import aoi, evaluate, extract, onboard, visualize  # noqa: E402
 
 
 def main() -> None:
@@ -52,18 +52,21 @@ def main() -> None:
         st.caption("Streamlit app · GAZE2CodeToolkit")
 
     tabs = st.tabs([
+        "🔧 Onboard Tobii",
         "📥 Extract",
         "🔎 AOI Detection",
         "🎨 Visualize",
         "✅ Evaluate OCR",
     ])
     with tabs[0]:
-        extract.render()
+        onboard.render()
     with tabs[1]:
-        aoi.render()
+        extract.render()
     with tabs[2]:
-        visualize.render()
+        aoi.render()
     with tabs[3]:
+        visualize.render()
+    with tabs[4]:
         evaluate.render()
 
     _render_footer()

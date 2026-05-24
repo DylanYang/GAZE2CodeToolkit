@@ -15,13 +15,21 @@ from typing import Optional, Tuple
 
 import pandas as pd
 
-from .datasets_config import DATASETS
+from .datasets_config import DATASETS, TOBII_PRO_COLUMNS
 from .tobii import load_tobii
 
 
-# Datasets that go through the unified Tobii parser. Extend this set when
-# new Tobii-family dataset configs are added to DATASETS.
-_TOBII_DATASETS = {"UNL_UM", "YMU_UM"}
+def _is_tobii_config(cfg: dict) -> bool:
+    """Identify Tobii-family configs by their ``columns`` schema or by
+    an ``eye_tracker`` string that starts with "Tobii".
+
+    Datasets onboarded through the Streamlit "Onboard Tobii" tab will
+    always satisfy both checks; the hand-written UNL_UM / YMU_UM entries
+    in :mod:`datasets_config` satisfy the first.
+    """
+    if cfg.get("columns") is TOBII_PRO_COLUMNS:
+        return True
+    return str(cfg.get("eye_tracker", "")).startswith("Tobii")
 
 
 def load(dataset_name: str,
@@ -51,18 +59,25 @@ def load(dataset_name: str,
     ------
     KeyError
         If `dataset_name` has no registered config.
+    NotImplementedError
+        If the config exists but the loader cannot infer how to parse
+        the dataset from it (no recognised eye-tracker family).
     """
     if dataset_name not in DATASETS:
         raise KeyError(
             f"Unknown dataset {dataset_name!r}. "
             f"Available: {sorted(DATASETS)}"
         )
-    if dataset_name in _TOBII_DATASETS:
+    cfg = DATASETS[dataset_name]
+    if _is_tobii_config(cfg):
         return load_tobii(dataset_name, sample_size=sample_size,
                            progress_callback=progress_callback,
                            raw_dir=raw_dir, stimuli_dir=stimuli_dir)
     raise NotImplementedError(
-        f"Dataset {dataset_name!r} is registered but no loader is wired up."
+        f"Dataset {dataset_name!r} is registered but its config does not "
+        f"match any known eye-tracker family (expected "
+        f"`columns=TOBII_PRO_COLUMNS` or `eye_tracker` starting with "
+        f"'Tobii'). Cannot dispatch to a parser."
     )
 
 
