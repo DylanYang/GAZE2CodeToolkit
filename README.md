@@ -187,7 +187,7 @@ GAZE2CodeToolkit/
 ├── webapp/                  # Streamlit tab modules and shared helpers
 │   ├── components.py
 │   ├── state.py
-│   └── tabs/{extract,aoi,visualize,evaluate}.py
+│   └── tabs/{onboard,extract,aoi,visualize,evaluate}.py
 ├── datasets/                # Dataset directories (see config; not in git)
 ├── output/                  # Default location for generated CSVs / PNGs
 └── *.ipynb                  # Legacy Jupyter notebooks (kept as research record)
@@ -281,8 +281,8 @@ or the no-leakage guarantee will silently break.
 
 ## Web UI (Streamlit)
 
-A browser UI wraps the CLIs into four interactive tabs (Extract,
-AOI Detection, Visualize, Evaluate OCR):
+A browser UI wraps the CLIs into five interactive tabs (Onboard Tobii,
+Extract, AOI Detection, Visualize, Evaluate OCR):
 
 ```bash
 cd GAZE2CodeToolkit
@@ -293,6 +293,34 @@ The app opens at <http://localhost:8501>. Both pre-configured datasets
 and uploaded files are supported; OCR runs are blocking with a spinner;
 generated CSVs are written to `output/` exactly like the CLIs, and also
 downloadable from the UI.
+
+### 🔧 Onboard Tobii — add a new dataset without touching code
+
+The first tab is a self-service onboarding flow that turns any Tobii
+Pro Lab export into a fully registered toolkit dataset in four steps,
+**without editing any Python file**:
+
+1. **Provide per-participant TSVs** — either stream-split a single
+   merged Tobii TSV (multi-GB files OK, binary-mode parse keeps memory
+   flat) or copy a directory that is already split. Both branches tally
+   the recording's `Event value` markers in the same pass.
+2. **Upload stimulus PNGs** with **Q-prefix auto-rename** — uploaded
+   files such as `Q1-SpecifyOutput.png` are matched to the recording's
+   markers (`Q1 (localhost)`) and saved with the marker as filename, so
+   `stimuli_name_template: "{event_value}.png"` lines up out of the
+   box. The shortest-marker tiebreaker correctly prefers
+   `Q1 (localhost)` over `Q1 Prompt (localhost)`.
+3. **Register the dataset** — one click appends a
+   `DATASETS["<name>"] = {…}` entry to `g2c/parsers/datasets_config.py`.
+   The snippet auto-detects column-name overrides for newer Tobii
+   exports (e.g. `Eye movement event duration` replacing
+   `Gaze event duration`) so the parser works without manual patching.
+4. **Remove an existing dataset** — drop the data folder and/or strip
+   the config entry, with separate checkboxes for each side.
+
+After Step 3 the new dataset is **immediately visible** in every other
+tab's dropdown — the tab reloads `datasets_config.py` from disk and
+clears `st.cache_data` so no Streamlit restart is needed.
 
 Deploy to [Streamlit Cloud](https://streamlit.io/cloud) by pointing at
 this repo and `GAZE2CodeToolkit/app.py` if you want a public link
@@ -372,8 +400,12 @@ local copy in `g2c/parsers/datasets_config.py`:
 
 ### Adding a new Tobii dataset
 
-For a new dataset that uses the same Tobii Pro Nano export format,
-edit `g2c/parsers/datasets_config.py`:
+**Recommended: use the Streamlit UI.** Open `streamlit run app.py`,
+click the **🔧 Onboard Tobii** tab, run Steps 1 → 2 → 3, and the new
+dataset shows up in every dropdown without any code or config edit.
+See the *Web UI* section above.
+
+**Manual: edit `g2c/parsers/datasets_config.py` yourself.**
 
 ```python
 DATASETS["MY_NEW_DATASET"] = {
@@ -383,6 +415,8 @@ DATASETS["MY_NEW_DATASET"] = {
     "stimuli_names": ("Task1 (localhost)", "Task2 (localhost)", ...),
     "n_stimuli": 7,
     "columns": TOBII_PRO_COLUMNS,    # already defined at the top of the file
+    # For newer Tobii Pro Lab exports that renamed the duration column:
+    # "columns": {**TOBII_PRO_COLUMNS, "duration": "Eye movement event duration"},
     "participant_col": "Participant name",
     "trial_split": {"strategy": "paired_markers", "per_trial": 3},
     "stimuli_name_template": "{event_value}.png",
@@ -393,7 +427,10 @@ DATASETS["MY_NEW_DATASET"] = {
 }
 ```
 
-Then call `parsers.load("MY_NEW_DATASET")` — no new code.
+Then call `parsers.load("MY_NEW_DATASET")` — no new code. The unified
+parser dispatcher routes any config whose `columns` is
+`TOBII_PRO_COLUMNS` (or whose `eye_tracker` starts with `"Tobii"`)
+through `load_tobii` automatically.
 
 ## Notebooks (legacy)
 
